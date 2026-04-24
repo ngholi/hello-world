@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+target/
+build/
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven
+.m2
+.maven
+
+# Node (if applicable)
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Miscellaneous
+*.log
+*.tmp
+.env
+.env.local
