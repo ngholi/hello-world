@@ -20,6 +20,9 @@ RUN addgroup -g 1001 -S appgroup && \
 
 WORKDIR /app
 
+# Create logs directory and set ownership
+RUN mkdir logs && chown appuser:appgroup logs
+
 # Copy JAR from builder stage
 COPY --from=builder --chown=appuser:appgroup /build/target/*.jar app.jar
 

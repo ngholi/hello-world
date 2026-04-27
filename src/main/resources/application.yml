@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: demo
+
+otel:
+  sdk:
+    disabled: ${OTEL_SDK_DISABLED:true}
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://otel-collector:4317}
+      protocol: ${OTEL_EXPORTER_OTLP_PROTOCOL:grpc}
+      timeout: ${OTEL_EXPORTER_OTLP_TIMEOUT:10000}
+  metrics:
+    exporter: otlp
+  metric:
+    export:
+      interval: ${OTEL_METRIC_EXPORT_INTERVAL:60000}
+  traces:
+    exporter: otlp
+    sampler:
+      arg: ${OTEL_TRACES_SAMPLER_ARG:1.0}
+  sampler: ${OTEL_TRACES_SAMPLER:parentbased_traceidratio}
+  logs:
+    exporter: ${OTEL_LOGS_EXPORTER:none}
+
+management:
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  endpoints:
+    web:
+      exposure:
+        include: "prometheus,health,info"
+  endpoint:
+    prometheus:
+      access: read_only
+  tracing:
+    sampling:
+      probability: ${TRACING_PROBABILITY:1.0}
+  observation:
+    annotations:
+      enabled: true
+  zipkin:
+    tracing:
+      export:
+        enabled: ${ZIPKIN_ENABLED:false}
+      endpoint: ${ZIPKIN_URL:http://zipkin:9411/api/v2/spans}
