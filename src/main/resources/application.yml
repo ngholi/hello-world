@@ -1,7 +1,35 @@
 spring:
   application:
     name: demo
-
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/urlshortener}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: HikariPool-UrlShortener
+      minimum-idle: 2
+      maximum-pool-size: 10
+      idle-timeout: 120000
+      max-lifetime: 300000
+      connection-timeout: 30000
+      auto-commit: true
+      keepalive-time: 60000
+      connection-test-query: SELECT 1
+      # Important for Supabase pooler connections
+      data-source-properties:
+        socketTimeout: 30
+        connectTimeout: 10
+        tcpKeepAlive: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
+    open-in-view: false
 otel:
   sdk:
     disabled: ${OTEL_SDK_DISABLED:true}
