@@ -2,15 +2,22 @@
 <configuration>
     <property name="LOGS" value="./logs" />
 
-    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+    <!-- Base Console Appender -->
+    <appender name="ConsoleBase" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <Pattern>
-                %d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [traceId=%X{traceId:-}, spanId=%X{spanId:-}] - %msg%n
+                %d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [traceId=%X{trace_id:-}, spanId=%X{span_id:-}] - %msg%n
             </Pattern>
         </encoder>
     </appender>
 
-    <appender name="RollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- Wrap with OpenTelemetry MDC -->
+    <appender name="Console" class="io.opentelemetry.instrumentation.logback.mdc.v1_0.OpenTelemetryAppender">
+        <appender-ref ref="ConsoleBase"/>
+    </appender>
+
+    <!-- Base Rolling File Appender -->
+    <appender name="RollingFileBase" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOGS}/spring-boot-logger.log</file>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeMdc>true</includeMdc>
@@ -22,7 +29,7 @@
                 <maxDepthPerThrowable>30</maxDepthPerThrowable>
                 <maxLength>2048</maxLength>
                 <shortenedClassNameLength>20</shortenedClassNameLength>
-                    
+                
                 <!-- Exclude common framework noise -->
                 <exclude>^sun\.reflect\..*</exclude>
                 <exclude>^java\.lang\.reflect\..*</exclude>
@@ -52,6 +59,11 @@
             <totalSizeCap>100MB</totalSizeCap>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
+    </appender>
+
+    <!-- Wrap with OpenTelemetry MDC -->
+    <appender name="RollingFile" class="io.opentelemetry.instrumentation.logback.mdc.v1_0.OpenTelemetryAppender">
+        <appender-ref ref="RollingFileBase"/>
     </appender>
 
     <root level="INFO">

@@ -28,9 +28,15 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-    show-sql: true
+    show-sql: false
     open-in-view: false
 otel:
+  instrumentation:
+    http:
+      # This is the most reliable way to kill Actuator traces in the OTel Starter
+      server:
+        filter:
+          additional-patterns: "/actuator/**"
   sdk:
     disabled: ${OTEL_SDK_DISABLED:true}
   exporter:
@@ -39,14 +45,14 @@ otel:
       protocol: ${OTEL_EXPORTER_OTLP_PROTOCOL:grpc}
       timeout: ${OTEL_EXPORTER_OTLP_TIMEOUT:10000}
   metrics:
-    exporter: otlp
+    exporter: ${OTEL_METRICS_EXPORTER:none}
   metric:
     export:
       interval: ${OTEL_METRIC_EXPORT_INTERVAL:60000}
   traces:
-    exporter: otlp
+    exporter: ${OTEL_TRACES_EXPORTER:none}
     sampler:
-      arg: ${OTEL_TRACES_SAMPLER_ARG:1.0}
+      arg: ${OTEL_TRACES_SAMPLER_ARG:0.0}
   sampler: ${OTEL_TRACES_SAMPLER:parentbased_traceidratio}
   logs:
     exporter: ${OTEL_LOGS_EXPORTER:none}
@@ -58,18 +64,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: "prometheus,health,info"
+        include: "prometheus,health,info,configprops,env"
   endpoint:
     prometheus:
       access: read_only
-  tracing:
-    sampling:
-      probability: ${TRACING_PROBABILITY:1.0}
-  observation:
-    annotations:
-      enabled: true
-  zipkin:
-    tracing:
-      export:
-        enabled: ${ZIPKIN_ENABLED:false}
-      endpoint: ${ZIPKIN_URL:http://zipkin:9411/api/v2/spans}
