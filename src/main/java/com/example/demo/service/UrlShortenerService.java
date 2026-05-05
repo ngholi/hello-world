@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.exception.CustomAliasAlreadyExistsException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.exception.ShortCodeGenerationException;
 import com.example.demo.exception.UrlExpiredException;
@@ -23,8 +24,16 @@ public class UrlShortenerService {
     private final Base62Generator generator;
 
     @Transactional
-    public ShortUrl shortenUrl(String originalUrl, OffsetDateTime expiresAt) {
-        String shortCode = generateUniqueShortCode();
+    public ShortUrl shortenUrl(String originalUrl, OffsetDateTime expiresAt, String customAlias) {
+        String shortCode;
+        if (customAlias != null && !customAlias.isBlank()) {
+            if (repository.existsByShortCode(customAlias)) {
+                throw new CustomAliasAlreadyExistsException(customAlias);
+            }
+            shortCode = customAlias;
+        } else {
+            shortCode = generateUniqueShortCode();
+        }
         
         ShortUrl shortUrl = ShortUrl.builder()
                 .shortCode(shortCode)

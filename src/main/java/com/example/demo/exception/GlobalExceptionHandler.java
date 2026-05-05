@@ -49,6 +49,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.GONE);
     }
 
+    @ExceptionHandler(CustomAliasAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleCustomAliasConflict(CustomAliasAlreadyExistsException ex) {
+        log.warn("Custom alias conflict: {}", ex.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                ex.getMessage(),
+                System.currentTimeMillis()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception ex) {
         log.error("An unexpected error occurred: {}", ex.getMessage(), ex);

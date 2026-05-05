@@ -31,7 +31,7 @@ public class UrlShortenerController {
             @Valid @RequestBody ShortenUrlRequest request,
             HttpServletRequest servletRequest) {
         
-        ShortUrl shortUrl = service.shortenUrl(request.getUrl(), request.getExpiresAt());
+        ShortUrl shortUrl = service.shortenUrl(request.getUrl(), request.getExpiresAt(), request.getCustomAlias());
         
         String baseUrl = servletRequest.getRequestURL().toString().replace(servletRequest.getRequestURI(), "");
         String fullShortUrl = baseUrl + "/" + shortUrl.getShortCode();

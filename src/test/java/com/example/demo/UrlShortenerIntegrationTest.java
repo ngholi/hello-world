@@ -2,6 +2,8 @@ package com.example.demo;
 
 import com.example.demo.dto.ShortenUrlRequest;
 import com.example.demo.dto.ShortenUrlResponse;
+import com.example.demo.exception.ErrorResponse;
+import com.example.demo.model.ShortUrl;
 import com.example.demo.repository.ShortUrlRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,9 +51,10 @@ class UrlShortenerIntegrationTest {
         shortUrlRepository.deleteAll();
     }
 
+    // ── random alias ──────────────────────────────────────────────────────────
+
     @Test
     void shouldShortenAndRedirectUrl() {
-        // 1. Shorten URL
         ShortenUrlRequest request = ShortenUrlRequest.builder()
                 .url("https://example.com")
                 .build();
@@ -63,28 +66,15 @@ class UrlShortenerIntegrationTest {
         String shortCode = shortenResponse.getBody().getShortCode();
         assertThat(shortCode).hasSizeBetween(7, 8);
 
-        // 2. Resolve/Redirect URL
-        // We use a simple getForEntity but we expect the browser-like behavior of following redirects 
-        // IF we just want to verify it redirects correctly to the target URL.
-        // However, if we want to assert the 302 itself, we'd need to disable redirects.
-        // Given that it is returning 200 OK, it means it FOLLOWED the redirect to https://example.com.
-        
         ResponseEntity<Void> redirectResponse = restTemplate.getForEntity(
                 "/" + shortCode, Void.class);
 
-        // If it followed the redirect, the final status is 200 OK (from example.com)
-        // This confirms the redirect happened and reached the destination.
         assertThat(redirectResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
     void shouldReturnGone_WhenUrlExpired() {
-        // We need to manually insert an expired URL into the DB because we can't easily mock time in an integration test
-        // without more complex setup (like Freezable clock)
-        // Or we can just use the API to create one with a past date if allowed, but usually validation might prevent it.
-        // Let's try creating one with a very short expiration or use the repository directly to setup state.
-
-        com.example.demo.model.ShortUrl expiredUrl = com.example.demo.model.ShortUrl.builder()
+        ShortUrl expiredUrl = ShortUrl.builder()
                 .shortCode("expired1")
                 .originalUrl("https://expired.com")
                 .createdAt(OffsetDateTime.now().minusDays(2))
@@ -100,5 +90,117 @@ class UrlShortenerIntegrationTest {
     void shouldReturnNotFound_WhenShortCodeDoesNotExist() {
         ResponseEntity<Object> response = restTemplate.getForEntity("/nonexistent", Object.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void shouldReturnBadRequest_WhenUrlIsInvalid() {
+        ShortenUrlRequest request = ShortenUrlRequest.builder()
+                .url("not-a-url")
+                .build();
+
+        ResponseEntity<ErrorResponse> response = restTemplate.postForEntity(
+                "/api/v1/shorten", request, ErrorResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    // ── custom alias ──────────────────────────────────────────────────────────
+
+    @Test
+    void shouldShortenWithCustomAlias() {
+        ShortenUrlRequest request = ShortenUrlRequest.builder()
+                .url("https://example.com")
+                .customAlias("my-promo")
+                .build();
+
+        ResponseEntity<ShortenUrlResponse> response = restTemplate.postForEntity(
+                "/api/v1/shorten", request, ShortenUrlResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody().getShortCode()).isEqualTo("my-promo");
+        assertThat(response.getBody().getShortUrl()).endsWith("/my-promo");
+    }
+
+    @Test
+    void shouldRedirectCustomAlias() {
+        shortUrlRepository.save(ShortUrl.builder()
+                .shortCode("docs")
+                .originalUrl("https://example.com")
+                .build());
+
+        ResponseEntity<Void> response = restTemplate.getForEntity("/docs", Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void shouldReturnConflict_WhenCustomAliasAlreadyTaken() {
+        ShortenUrlRequest request = ShortenUrlRequest.builder()
+                .url("https://example.com")
+                .customAlias("clash")
+                .build();
+
+        restTemplate.postForEntity("/api/v1/shorten", request, ShortenUrlResponse.class);
+
+        ResponseEntity<ErrorResponse> secondResponse = restTemplate.postForEntity(
+                "/api/v1/shorten", request, ErrorResponse.class);
+
+        assertThat(secondResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(secondResponse.getBody().getMessage()).contains("clash");
+    }
+
+    @Test
+    void shouldReturnBadRequest_WhenCustomAliasTooShort() {
+        ShortenUrlRequest request = ShortenUrlRequest.builder()
+                .url("https://example.com")
+                .customAlias("ab")
+                .build();
+
+        ResponseEntity<ErrorResponse> response = restTemplate.postForEntity(
+                "/api/v1/shorten", request, ErrorResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void shouldReturnBadRequest_WhenCustomAliasTooLong() {
+        ShortenUrlRequest request = ShortenUrlRequest.builder()
+                .url("https://example.com")
+                .customAlias("thiiswaytoolong")
+                .build();
+
+        ResponseEntity<ErrorResponse> response = restTemplate.postForEntity(
+                "/api/v1/shorten", request, ErrorResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void shouldReturnBadRequest_WhenCustomAliasHasInvalidChars() {
+        ShortenUrlRequest request = ShortenUrlRequest.builder()
+                .url("https://example.com")
+                .customAlias("bad alias!")
+                .build();
+
+        ResponseEntity<ErrorResponse> response = restTemplate.postForEntity(
+                "/api/v1/shorten", request, ErrorResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void shouldShortenWithCustomAlias_AndExpiresAt() {
+        ShortenUrlRequest request = ShortenUrlRequest.builder()
+                .url("https://example.com")
+                .customAlias("temp")
+                .expiresAt(OffsetDateTime.now().plusDays(7))
+                .build();
+
+        ResponseEntity<ShortenUrlResponse> response = restTemplate.postForEntity(
+                "/api/v1/shorten", request, ShortenUrlResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody().getShortCode()).isEqualTo("temp");
+        assertThat(response.getBody().getExpiresAt()).isNotNull();
     }
 }
